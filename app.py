@@ -65,7 +65,7 @@ def extract_bubble_features(image_path, visualize=True, top_n=20):
         h_mean, s_mean, v_mean = roi_hsv.mean(axis=0)
 
         # HSV pink filter
-        if 252/360 <= h_mean <= 290/360 and s_mean >= 0.07 and v_mean >= 0.60:
+        if 252/360 <= h_mean <= 290/360 and s_mean >= 0.04 and v_mean >= 0.60:
             score = (h_mean**8) * r
             candidates.append({
                 "x": int(x),
@@ -103,8 +103,8 @@ def extract_bubble_features(image_path, visualize=True, top_n=20):
 # --------------------------
 calibration_data = pd.DataFrame({
     "Glucose": [25, 50, 75, 100, 125],  # µM
-    "H": [0.722, 0.733, 0.740, 0.730, 0.786],
-    "S": [0.087, 0.092, 0.102, 0.092, 0.113]
+    "H": [0.721975, 0.729640, 0.732043, 0.740653, 0.786354],
+    "S": [0.086809, 0.092191, 0.092608, 0.101584, 0.112603]
 })
 
 # Baseline from blank saliva
@@ -160,4 +160,5 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"Error processing image: {e}")
+
 
