@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression
 # Streamlit UI config
 # --------------------------
 st.set_page_config(page_title="Saliva Glucose Estimator", layout="wide")
-st.title("Glucose Estimator from Microfluidic Bubbles (Saliva Baseline Weighted)")
+st.title("Saliva Glucose Estimator")
 
 # --------------------------
 # RGB to HSV conversion
@@ -143,3 +143,4 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"Error processing image: {e}")
+
