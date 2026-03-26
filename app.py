@@ -71,7 +71,7 @@ def extract_bubble_features(image_path, top_n=20):
 
         # HSV pink filter
         if 252/360 <= h_mean <= 290/360 and s_mean >= 0.04 and v_mean >= 0.60:
-            score = (h_mean**8) * r
+            score = (h_mean**8) * s_mean * v_mean * r
             candidates.append({"roi_hsv": roi_hsv, "score": score})
 
     if len(candidates) == 0:
@@ -138,7 +138,7 @@ if uploaded_file:
 
         # Show only original uploaded image
         st.image(img_rgb, caption="Uploaded Image", use_column_width=True)
-        st.subheader("Estimated Glucose (µM, weighted)")
+        st.subheader("Estimated Glucose (µM)")
         st.write(f"{glucose_weighted:.1f} µM")
 
     except Exception as e:
