@@ -254,7 +254,7 @@ with tab3:
 
     st.subheader("Carbohydrate Counter")
 
-    carb_foods = {
+    carbs_per_serving = {
         "Rice (1 serving)": 45,
         "Bread (2 slices)": 30,
         "Apple (1 piece)": 15,
