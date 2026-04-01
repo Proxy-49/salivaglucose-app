@@ -29,7 +29,7 @@ html, body, [class*="css"] {
 
 /* Title background */
 h1 {
-    background-color: #FEEFB3 !important;  /* soft muted gold */
+    background-color: #FFF5E1 !important;  /* soft muted gold */
     padding: 10px;
     border-radius: 5px;
 }
