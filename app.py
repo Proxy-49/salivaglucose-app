@@ -14,11 +14,12 @@ st.set_page_config(
     page_title="Saliva Glucose Monitoring Platform",
     layout="wide"
 )
+
 st.markdown("""
 <style>
 /* App background */
 .stApp {
-    background: #eaf8ea;  /* light green background */
+    background: #eaf8ea;  /* light green background for app */
     color: black !important;  /* all default text black */
 }
 
@@ -27,22 +28,30 @@ html, body, [class*="css"] {
     color: black !important;
 }
 
-/* Tab text and background */
+/* Title background */
+h1 {
+    background-color: #FBC02D !important;  /* yellow/gold background */
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Entire tabs row background */
+div[role="tablist"] {
+    background-color: #2E7D32 !important;  /* dark green row behind tabs */
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Tab text color */
 button[data-baseweb="tab"] {
-    background-color: #2E7D32 !important;  /* dark green for tabs */
-    color: black !important;               /* tab text black */
+    color: black !important;  /* tab text black */
     font-weight: 600;
 }
 
 /* Selected tab highlight */
 button[data-baseweb="tab"][data-selected="true"] {
     background-color: #66BB6A !important;  /* lighter green for active tab */
-    color: black !important;                /* selected tab text black */
-}
-
-/* Title color */
-h1 {
-    color: #FBC02D !important;  /* complementary soft gold */
+    color: black !important;
 }
 </style>
 """, unsafe_allow_html=True)
