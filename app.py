@@ -284,7 +284,7 @@ with tab2:
             st.subheader("Estimated Glucose (µM)")
             st.write(f"**{glucose_weighted:.1f} µM**")
 
-            if 10 <= glucose_weighted <= 150:
+            if 0 <= glucose_weighted <= 150:
                 st.success("✅ This is within expected healthy physiological saliva range.")
             elif 150 < glucose_weighted <= 250:
                 st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
