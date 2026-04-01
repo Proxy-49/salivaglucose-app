@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from sklearn.linear_model import LinearRegression
 
 # --------------------------
@@ -182,8 +183,8 @@ calibration_data = pd.DataFrame({
 })
 
 # saliva reference correction
-H_blank_deg = 10
-S_blank_percent = 0.5
+H_blank_deg = 2
+S_blank_percent = 0.1
 
 H_blank = H_blank_deg / 360.0
 S_blank = S_blank_percent / 100.0
@@ -227,7 +228,7 @@ Diabetes mellitus is a chronic metabolic disorder characterized by elevated gluc
 
 **Type 2 diabetes** results from insulin resistance.
 
-This application estimates saliva glucose.
+This application estimates saliva glucose and hopes to reduce the need invasive testing.
 """)
 
     st.subheader("Workflow")
@@ -296,8 +297,8 @@ with tab2:
             "Glucose": round(glucose_weighted, 1)
             })
         
-        except Exception as e:
-            st.error(f"No bubbles detected in image, do upload another image: {e}")
+            except Exception as e:
+                st.error(f"No bubbles detected in image, do upload another image: {e}")
         
 # ==========================================
 #  HISTORY TAB
