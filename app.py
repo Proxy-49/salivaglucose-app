@@ -297,8 +297,8 @@ with tab2:
             "Glucose": round(glucose_weighted, 1)
             })
         
-            except Exception as e:
-                st.error(f"No bubbles detected in image, do upload another image: {e}")
+        except Exception as e:
+            st.error(f"No bubbles detected in image, do upload another image: {e}")
         
 # ==========================================
 #  HISTORY TAB
