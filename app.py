@@ -2,25 +2,29 @@ import streamlit as st
 import cv2
 import numpy as np
 import pandas as pd
+from datetime import datetime
 from sklearn.linear_model import LinearRegression
 
 # =====================================
-# PAGE CONFIG
+# PAGE STYLE
 # =====================================
 st.set_page_config(
     page_title="Saliva Glucose Monitoring Platform",
     layout="wide"
 )
 
-# Force black text on white background
 st.markdown("""
 <style>
 .stApp {
-    background-color: white;
+    background: #eaf8ea;
     color: black;
 }
 html, body, [class*="css"] {
     color: black !important;
+}
+button[data-baseweb="tab"] {
+    color: black !important;
+    font-weight: 600;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -28,11 +32,10 @@ html, body, [class*="css"] {
 st.title("🧪 Saliva Glucose Monitoring Platform")
 
 # =====================================
-# IMAGE PROCESSING FUNCTIONS
+# RGB TO HSV
 # =====================================
 def rgb_to_hsv(rgb):
     rgb = np.array(rgb)
-
     maxc = rgb.max(axis=1)
     minc = rgb.min(axis=1)
 
@@ -40,19 +43,19 @@ def rgb_to_hsv(rgb):
     s = (maxc - minc) / (maxc + 1e-6)
     s[maxc == 0] = 0
 
-    rc = (maxc - rgb[:, 0]) / (maxc - minc + 1e-6)
-    gc = (maxc - rgb[:, 1]) / (maxc - minc + 1e-6)
-    bc = (maxc - rgb[:, 2]) / (maxc - minc + 1e-6)
+    rc = (maxc - rgb[:,0]) / (maxc - minc + 1e-6)
+    gc = (maxc - rgb[:,1]) / (maxc - minc + 1e-6)
+    bc = (maxc - rgb[:,2]) / (maxc - minc + 1e-6)
 
     h = np.zeros_like(maxc)
 
-    mask = maxc == rgb[:, 0]
+    mask = maxc == rgb[:,0]
     h[mask] = (bc - gc)[mask]
 
-    mask = maxc == rgb[:, 1]
+    mask = maxc == rgb[:,1]
     h[mask] = 2.0 + (rc - bc)[mask]
 
-    mask = maxc == rgb[:, 2]
+    mask = maxc == rgb[:,2]
     h[mask] = 4.0 + (gc - rc)[mask]
 
     h = (h / 6.0) % 1.0
@@ -60,20 +63,21 @@ def rgb_to_hsv(rgb):
 
     return np.stack([h, s, v], axis=1)
 
-
+# =====================================
+# BUBBLE FEATURE EXTRACTION
+# =====================================
 def extract_bubble_features(image_path, top_n=20):
     img = cv2.imread(image_path)
 
     if img is None:
-        raise ValueError("Cannot read image")
+        raise ValueError(f"Cannot read image {image_path}")
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
+    img_gray = cv2.GaussianBlur(img_gray, (3,3), 0)
 
     circles = cv2.HoughCircles(
-        img_gray,
-        cv2.HOUGH_GRADIENT,
+        img_gray, cv2.HOUGH_GRADIENT,
         dp=1.2,
         minDist=20,
         param1=50,
@@ -83,7 +87,7 @@ def extract_bubble_features(image_path, top_n=20):
     )
 
     if circles is None:
-        raise ValueError("No bubbles detected")
+        raise ValueError("No bubbles detected.")
 
     circles = np.around(circles).astype(int)
 
@@ -108,7 +112,7 @@ def extract_bubble_features(image_path, top_n=20):
             })
 
     if len(candidates) == 0:
-        raise ValueError("No valid bubbles found")
+        raise ValueError("No bubbles passed HSV filter.")
 
     candidates = sorted(
         candidates,
@@ -123,53 +127,75 @@ def extract_bubble_features(image_path, top_n=20):
 
     return avg_hsv, img_rgb
 
+# =====================================
+# CALIBRATION MODEL
+# =====================================
+calibration_data = pd.DataFrame({
+    "Glucose": [25, 50, 75, 100, 125],
+    "H": [0.722795, 0.731712, 0.730700, 0.743624, 0.786134],
+    "S": [0.086949, 0.093759, 0.097361, 0.107223, 0.121588]
+})
 
-def train_model():
-    calibration_data = pd.DataFrame({
-        "Glucose": [25, 50, 75, 100, 125],
-        "H": [0.722795, 0.731712, 0.730700, 0.743624, 0.786134],
-        "S": [0.086949, 0.093759, 0.097361, 0.107223, 0.121588]
-    })
+H_blank_deg = 12
+S_blank_percent = 0.6
 
-    y = calibration_data["Glucose"].values
+H_blank = H_blank_deg / 360.0
+S_blank = S_blank_percent / 100.0
 
-    model_H = LinearRegression().fit(calibration_data[["H"]], y)
-    model_S = LinearRegression().fit(calibration_data[["S"]], y)
-    model_HS = LinearRegression().fit(calibration_data[["H", "S"]], y)
+calibration_data["H_corr"] = calibration_data["H"] - H_blank
+calibration_data["S_corr"] = calibration_data["S"] - S_blank
 
-    return model_H, model_S, model_HS
+y_glucose = calibration_data["Glucose"].values
 
+model_H  = LinearRegression().fit(calibration_data[["H_corr"]], y_glucose)
+model_S  = LinearRegression().fit(calibration_data[["S_corr"]], y_glucose)
+model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_glucose)
 
 # =====================================
 # TABS
 # =====================================
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏠 Home",
-    "🧪 Reagent Set A",
-    "🍽️ Diet",
+    "🧪 Saliva Glucose Estimation",
+    "🍽 Diet",
     "🩸 Finger Prick Guide",
     "❓ Myth Buster"
 ])
 
 # =====================================
-# HOME TAB
+# HOME
 # =====================================
 with tab1:
     st.header("About Diabetes")
 
     st.write("""
-Diabetes mellitus is a chronic metabolic condition characterized by elevated blood glucose levels.
+Diabetes mellitus is a chronic metabolic disorder characterized by elevated glucose levels.
 
-**Type 1 diabetes** occurs when the pancreas produces little or no insulin.
+**Type 1 diabetes** results from insufficient insulin production.
 
-**Type 2 diabetes** occurs when the body becomes resistant to insulin or does not produce enough insulin.
+**Type 2 diabetes** results from insulin resistance.
 
-This platform estimates saliva glucose concentration from microfluidic bubble images using HSV colour analysis and regression modelling.
+This application estimates saliva glucose.
+""")
+
+    st.subheader("Workflow")
+
+    st.write("""
+```text
+Upload / Take image under Saliva Glucose Estimation Tab
+        ↓
+Automatic bubble detection
+        ↓
+Automatic HSV colour extraction
+        ↓
+Automatic Regression prediction
+        ↓
+Given estimated saliva glucose
 """)
 
 
 # =====================================
-# REAGENT SET A TAB
+# Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
     st.header("Upload Microfluidic Bubble Image")
@@ -208,39 +234,42 @@ with tab2:
                 "This is within expected healthy physiological saliva range."
             )
 
-        elif 150 < glucose <= 250:
+        elif 150 < glucose:
             st.warning(
                 "Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment."
             )
 
         else:
             st.error(
-                "Markedly elevated saliva glucose detected. Clinical follow-up is advised."
+                "Unusual Glucose Level detected, do upload another image"
             )
-
+    except Exception as e:
+        st.error(f"Error processing image: {e}")
 
 # =====================================
 # DIET TAB
 # =====================================
 with tab3:
     st.header("Food Serving Size Estimation")
+    st.image("8.png")
+    serving_df = pd.DataFrame({
+    "Food Group": ["Vegetables", "Protein", "Carbohydrates", "Fats"],
+    "Recommended ": ["2-3 Servings", "1-2 Servings", "1 Serving", "1 Serving"]
+    })
 
-    st.write("""
-### Portion Guide
-- **Protein:** 1 palm
-- **Vegetables:** 1 fist
-- **Carbohydrates:** 1 cupped hand
-- **Fats:** 1 thumb
-""")
+    st.table(serving_df)
 
-    st.header("Carbohydrate Counting")
+    st.subheader("Carbohydrate Counter")
 
-    carbs_per_serving = {
-        "Rice (1 bowl)": 45,
+    carb_foods = {
+        "Rice (1 serving)": 45,
         "Bread (2 slices)": 30,
-        "Apple (1 medium)": 15,
-        "Banana (1 medium)": 27,
-        "Noodles (1 bowl)": 40
+        "Apple (1 piece)": 15,
+        "Banana (1 piece)": 27,
+        "Noodles (1 serving)": 40,
+        "Pasta (1 serving)": 42,
+        "Crackers (5 pieces)": 15,
+        "Milk (1 cup)": 12
     }
 
     food = st.selectbox(
