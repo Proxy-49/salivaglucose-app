@@ -14,22 +14,39 @@ st.set_page_config(
     page_title="Saliva Glucose Monitoring Platform",
     layout="wide"
 )
-
 st.markdown("""
 <style>
+/* App background */
 .stApp {
-    background: #eaf8ea;
-    color: black;
+    background: #eaf8ea;  /* light green background */
+    color: black !important;  /* all default text black */
 }
+
+/* Force all text to black */
 html, body, [class*="css"] {
     color: black !important;
 }
+
+/* Tab text and background */
 button[data-baseweb="tab"] {
-    color: black !important;
+    background-color: #2E7D32 !important;  /* dark green for tabs */
+    color: black !important;               /* tab text black */
     font-weight: 600;
+}
+
+/* Selected tab highlight */
+button[data-baseweb="tab"][data-selected="true"] {
+    background-color: #66BB6A !important;  /* lighter green for active tab */
+    color: black !important;                /* selected tab text black */
+}
+
+/* Title color */
+h1 {
+    color: #FBC02D !important;  /* complementary soft gold */
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 st.title("🧪 Saliva Glucose Monitoring Platform")
 
