@@ -228,7 +228,7 @@ Diabetes mellitus is a chronic metabolic disorder characterized by elevated gluc
 
 **Type 2 diabetes** results from insulin resistance.
 
-This application estimates saliva glucose and hopes to reduce the need invasive testing.
+This application estimates saliva glucose and hopes to reduce the need for invasive testing.
 """)
 
     st.subheader("Workflow")
