@@ -66,7 +66,7 @@ def rgb_to_hsv(rgb):
     return np.stack([h, s, v], axis=1)
 
 # =====================================
-# BUBBLE FEATURE EXTRACTION
+# BUBBLE FEATURE EXTRACTION (UPDATED)
 # =====================================
 def extract_bubble_features(image_path, top_n=20):
     img = cv2.imread(image_path)
@@ -75,39 +75,59 @@ def extract_bubble_features(image_path, top_n=20):
         raise ValueError(f"Cannot read image {image_path}")
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_gray = cv2.GaussianBlur(img_gray, (3,3), 0)
 
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Improve contrast
+    gray_contrast = cv2.equalizeHist(gray)
+
+    # Reduce noise
+    gray_blur = cv2.GaussianBlur(gray_contrast, (5, 5), 1.2)
+
+    # Improved Hough circle detection
     circles = cv2.HoughCircles(
-        img_gray, cv2.HOUGH_GRADIENT,
-        dp=1.2,
-        minDist=20,
-        param1=50,
-        param2=35,
-        minRadius=5,
-        maxRadius=50
+        gray_blur,
+        cv2.HOUGH_GRADIENT,
+        dp=1.1,
+        minDist=15,
+        param1=80,
+        param2=22,
+        minRadius=8,
+        maxRadius=25
     )
 
     if circles is None:
         raise ValueError("No bubbles detected.")
 
-    circles = np.around(circles).astype(int)
+    circles = np.round(circles[0]).astype(int)
 
     candidates = []
 
-    for x, y, r in circles[0]:
-        r = int(r * 0.9)
+    for x, y, r in circles:
+        # Keep almost full bubble region
+        r_roi = int(r * 0.95)
 
         Y, X = np.ogrid[:img_rgb.shape[0], :img_rgb.shape[1]]
-        mask = (X - x)**2 + (Y - y)**2 <= r**2
+        mask = (X - x)**2 + (Y - y)**2 <= r_roi**2
 
         roi_rgb = img_rgb[mask]
+
+        if roi_rgb.size == 0:
+            continue
+
         roi_hsv = rgb_to_hsv(roi_rgb / 255.0)
 
         h_mean, s_mean, v_mean = roi_hsv.mean(axis=0)
 
-        if 252/360 <= h_mean <= 290/360 and s_mean >= 0.04 and v_mean >= 0.60:
-            score = (h_mean**8) * s_mean * v_mean * r
+        # HSV pink filter
+        if (
+            252/360 <= h_mean <= 290/360 and
+            s_mean >= 0.04 and
+            v_mean >= 0.60
+        ):
+            score = (h_mean**8) * s_mean * v_mean * r_roi
+
             candidates.append({
                 "roi_hsv": roi_hsv,
                 "score": score
@@ -134,12 +154,13 @@ def extract_bubble_features(image_path, top_n=20):
 # =====================================
 calibration_data = pd.DataFrame({
     "Glucose": [25, 50, 75, 100, 125],
-    "H": [0.722795, 0.731712, 0.730700, 0.743624, 0.786134],
-    "S": [0.086949, 0.093759, 0.097361, 0.107223, 0.121588]
+    "H": [0.735825, 0.745060, 0.740868, 0.743964, 0.784736],
+    "S": [0.085632, 0.090197, 0.090234, 0.100153, 0.130699]
 })
 
-H_blank_deg = 12
-S_blank_percent = 0.6
+# saliva reference correction
+H_blank_deg = 10
+S_blank_percent = 0.5
 
 H_blank = H_blank_deg / 360.0
 S_blank = S_blank_percent / 100.0
@@ -244,16 +265,17 @@ with tab2:
                 st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
             else:
                 st.error("❌ Unusual Glucose Level detected, do upload another image.")
-
-        except Exception as e:
-            st.error(f"No bubbles detected in image, do upload another image: {e}")
-       
-        sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
-
-        st.session_state.history.append({
+           
+            sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
+            
+            st.session_state.history.append({
             "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
             "Glucose": round(glucose_weighted, 1)
             })
+        
+        except Exception as e:
+            st.error(f"No bubbles detected in image, do upload another image: {e}")
+        
 # ==========================================
 #  HISTORY TAB
 # ==========================================
