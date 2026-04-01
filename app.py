@@ -147,8 +147,8 @@ def extract_bubble_features(image_path, top_n=20):
 
         # HSV pink filter
         if (
-            252/360 <= h_mean <= 290/360 and
-            s_mean >= 0.04 and
+            250/360 <= h_mean <= 295/360 and
+            s_mean >= 0.035 and
             v_mean >= 0.60
         ):
             score = (h_mean**8) * s_mean * v_mean * r_roi
