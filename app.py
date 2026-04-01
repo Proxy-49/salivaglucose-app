@@ -198,53 +198,46 @@ Given estimated saliva glucose
 # Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
-    st.header("Upload Microfluidic Bubble Image")
-
     uploaded_file = st.file_uploader(
-        "Upload image",
-        type=["jpg", "png", "jpeg"]
+        "Upload an image of your saliva bubbles",
+        type=["jpg","png","jpeg"]
     )
 
     if uploaded_file:
-        temp_path = "temp.jpg"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        temp_path = f"temp_{timestamp}.jpg"
 
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        avg_hsv, img_rgb = extract_bubble_features(temp_path)
+        try:
+            avg_hsv, img_rgb = extract_bubble_features(temp_path)
+            H_avg, S_avg, V_avg = avg_hsv
 
-        H_avg, S_avg, _ = avg_hsv
+            df_H  = pd.DataFrame({"H_corr":[H_avg]})
+            df_S  = pd.DataFrame({"S_corr":[S_avg]})
+            df_HS = pd.DataFrame({"H_corr":[H_avg], "S_corr":[S_avg]})
 
-        model_H, model_S, model_HS = train_model()
+            g_H  = max(model_H.predict(df_H)[0], 0)
+            g_S  = max(model_S.predict(df_S)[0], 0)
+            g_HS = max(model_HS.predict(df_HS)[0], 0)
 
-        g_H = model_H.predict(pd.DataFrame({"H": [H_avg]}))[0]
-        g_S = model_S.predict(pd.DataFrame({"S": [S_avg]}))[0]
-        g_HS = model_HS.predict(
-            pd.DataFrame({"H": [H_avg], "S": [S_avg]})
-        )[0]
+            glucose_weighted = 0.5*g_H + 0.3*g_S + 0.2*g_HS
 
-        glucose = 0.5 * g_H + 0.3 * g_S + 0.2 * g_HS
+            st.image(img_rgb, caption="Uploaded Image")
+            st.subheader("Estimated Glucose (µM)")
+            st.write(f"**{glucose_weighted:.1f} µM**")
 
-        st.image(img_rgb, caption="Uploaded Image")
+            if 10 <= glucose_weighted <= 150:
+                st.success("✅ This is within expected healthy physiological saliva range.")
+            elif 150 < glucose_weighted <= 250:
+                st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
+            else:
+                st.error("❌ Unusual Glucose Level detected, do upload another image.")
 
-        st.metric("Estimated Saliva Glucose", f"{glucose:.1f} µM")
+        except Exception as e:
+            st.error(f"No bubbles detected in image, do upload another image: {e}")
 
-        if 10 <= glucose <= 150:
-            st.success(
-                "This is within expected healthy physiological saliva range."
-            )
-
-        elif 150 < glucose:
-            st.warning(
-                "Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment."
-            )
-
-        else:
-            st.error(
-                "Unusual Glucose Level detected, do upload another image"
-            )
-    except Exception as e:
-        st.error(f"Error processing image: {e}")
 
 # =====================================
 # DIET TAB
