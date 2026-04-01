@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from datetime import datetime
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 # =====================================
@@ -151,6 +152,11 @@ model_H  = LinearRegression().fit(calibration_data[["H_corr"]], y_glucose)
 model_S  = LinearRegression().fit(calibration_data[["S_corr"]], y_glucose)
 model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_glucose)
 
+
+# Initialize session state
+if "history" not in st.session_state:
+    st.session_state.history = []
+    
 # =====================================
 # TABS
 # =====================================
@@ -240,6 +246,11 @@ with tab2:
 
         except Exception as e:
             st.error(f"No bubbles detected in image, do upload another image: {e}")
+        
+        st.session_state.history.append({
+        "Time": datetime.now().strftime("%H:%M:%S"),
+        "Glucose": round(glucose_weighted, 1)
+        })
 
 # ==========================================
 #  HISTORY TAB
