@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
@@ -246,12 +247,13 @@ with tab2:
 
         except Exception as e:
             st.error(f"No bubbles detected in image, do upload another image: {e}")
-        
-        st.session_state.history.append({
-        "Time": datetime.now().strftime("%H:%M:%S"),
-        "Glucose": round(glucose_weighted, 1)
-        })
+       
+        sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
 
+        st.session_state.history.append({
+            "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "Glucose": round(glucose_weighted, 1)
+            })
 # ==========================================
 #  HISTORY TAB
 # ==========================================
@@ -266,7 +268,7 @@ with tab3:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(df["Time"], df["Glucose"], marker="o")
         ax.set_ylabel("Glucose (µM)")
-        ax.set_xlabel("Time")
+        ax.set_xlabel("Date | Time")
 
         st.pyplot(fig)
     else:
