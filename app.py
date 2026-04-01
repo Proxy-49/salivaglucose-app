@@ -1,21 +1,3 @@
-import streamlit as st
-import cv2
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from zoneinfo import ZoneInfo
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-
-# =====================================
-# PAGE STYLE
-# =====================================
-st.set_page_config(
-    page_title="Saliva Glucose Monitoring Platform",
-    layout="wide"
-)
-
-
 # app_glucose_only.py
 
 import streamlit as st
@@ -31,6 +13,49 @@ from sklearn.linear_model import LinearRegression
 # --------------------------
 st.set_page_config(page_title="Saliva Glucose Estimator", layout="wide")
 st.title("Glucose Estimator from Microfluidic Bubbles")
+
+t.markdown("""
+<style>
+/* App background */
+.stApp {
+    background-color: #eaf8ea;  /* light green background for app */
+    color: black !important;    /* all default text black */
+}
+
+/* Force all text to black */
+html, body, [class*="css"] {
+    color: black !important;
+}
+
+/* Title background */
+h1 {
+    background-color: #FEEFB3 !important;  /* soft muted gold */
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Entire tabs row background */
+div[role="tablist"] {
+    background-color: #C6EAC6 !important;  /* slightly darker green than background */
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Tab text color */
+button[data-baseweb="tab"] {
+    color: black !important;  /* tab text black */
+    font-weight: 600;
+}
+
+/* Selected tab highlight */
+button[data-baseweb="tab"][data-selected="true"] {
+    background-color: #A5D6A7 !important;  /* slightly brighter green for active tab */
+    color: black !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.title("🧪 Saliva Glucose Monitoring Platform")
 
 # --------------------------
 # RGB to HSV conversion
