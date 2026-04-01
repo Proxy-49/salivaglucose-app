@@ -4,6 +4,7 @@ import streamlit as st
 import cv2
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
