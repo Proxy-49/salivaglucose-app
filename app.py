@@ -157,6 +157,7 @@ model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_gluco
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏠 Home",
     "🧪 Saliva Glucose Estimation",
+    "📈 History",
     "🍽 Diet",
     "🩸 Finger Prick Guide",
     "❓ Myth Buster"
@@ -180,18 +181,20 @@ This application estimates saliva glucose.
 
     st.subheader("Workflow")
 
-    st.write("""
-```text
-Upload / Take image under Saliva Glucose Estimation Tab
-        ↓
-Automatic bubble detection
-        ↓
-Automatic HSV colour extraction
-        ↓
-Automatic Regression prediction
-        ↓
-Given estimated saliva glucose
-""")
+    st.subheader("🗺️ How to Use This Web App")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.image("https://img.icons8.com/fluency/96/test-tube.png")
+        st.caption("1️⃣ Go to Saliva Glucose Estimation Tab")
+    with col2:
+        st.image("https://img.icons8.com/fluency/96/image-file.png")
+        st.caption("2️⃣ Upload/Take image")
+    with col3:
+        st.image("https://img.icons8.com/fluency/96/microscope.png")
+        st.caption("3️⃣ Automatic analysis")
+    with col4:
+        st.image("https://img.icons8.com/fluency/96/combo-chart.png")
+        st.caption("4️⃣ View result")
 
 
 # =====================================
@@ -238,11 +241,29 @@ with tab2:
         except Exception as e:
             st.error(f"No bubbles detected in image, do upload another image: {e}")
 
+# ==========================================
+#  HISTORY TAB
+# ==========================================
+with tab3:
+    st.header("Historical Results Log")
 
+    if len(st.session_state.history) > 0:
+        df = pd.DataFrame(st.session_state.history)
+
+        st.dataframe(df)
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(df["Time"], df["Glucose"], marker="o")
+        ax.set_ylabel("Glucose (µM)")
+        ax.set_xlabel("Time")
+
+        st.pyplot(fig)
+    else:
+        st.info("No historical data available yet.")
 # =====================================
 # DIET TAB
 # =====================================
-with tab3:
+with tab4:
     st.header("Food Serving Size Estimation")
     st.image("8.png")
     serving_df = pd.DataFrame({
@@ -284,7 +305,7 @@ with tab3:
 # =====================================
 # FINGER PRICK GUIDE
 # =====================================
-with tab4:
+with tab5:
     st.header("Conventional Finger-Prick Monitoring")
 
     steps = [
@@ -305,7 +326,7 @@ with tab4:
 # =====================================
 # MYTH BUSTER TAB
 # =====================================
-with tab5:
+with tab6:
     st.header("Diabetes Myth Buster")
 
     myths = {
