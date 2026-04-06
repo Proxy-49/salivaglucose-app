@@ -324,20 +324,17 @@ with tab2:
                 """, unsafe_allow_html=True)
             else:
                 # Risk visualization
-                if 10 <= glucose_weighted <= 110:
-                    bar_color = "#0b5d1e"
+                risk_width = (glucose_weighted - 10) / (250 - 10) * 100  # 0–100%
+                risk_width = np.clip(risk_width, 0, 100)
+                if glucose_weighted <= 110:
+                    bar_color = "#0b5d1e"  # green
                     risk_text = "🟢 Low Risk"
-                    risk_width = (glucose_weighted - 10) / 100 * 100
-                elif 110 < glucose_weighted <= 220:
-                    bar_color = "#b8860b"
+                elif glucose_weighted <= 220:
+                    bar_color = "#b8860b"  # yellow
                     risk_text = "🟡 Moderate Risk"
-                    risk_width = (glucose_weighted - 110) / 110 * 100
                 else:
-                    bar_color = "#8b0000"
-                    risk_text = "🔴 Very High Glucose Level Detected. Please confirm with finger-prick."
-                    risk_width = (glucose_weighted - 220) / 30 * 100
-
-                risk_width = min(risk_width, 100)
+                    bar_color = "#8b0000"  # red
+                    risk_text = "🔴 Very High Glucose Level"
 
                 st.markdown(f"""
                 <div style="
