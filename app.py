@@ -301,28 +301,56 @@ with tab2:
             st.write(f"**{glucose_weighted:.1f} µM**")
 
             # Risk zone visualisation
-            risk_percent = min(glucose_weighted / 200, 1.0)
-            st.progress(risk_percent)
-
-            if 10 <= glucose_weighted <= 110:
-                st.success("✅ This is within expected healthy physiological saliva range.")
-            elif 110 < glucose_weighted <= 200:
-                st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
+            # Risk zone visualisation
+            if glucose_weighted <= 110:
+                risk_width = min(glucose_weighted / 110, 1.0) * 100
+                bar_color = "#0b5d1e"   # dark green
+                risk_text = "🟢 Low Risk"
+            
+            elif glucose_weighted <= 200:
+                risk_width = min(glucose_weighted / 200, 1.0) * 100
+                bar_color = "#b8860b"   # dark amber
+                risk_text = "🟡 Moderate Risk"
+            
             else:
-                st.error("❌ Unusual Glucose Level detected, do upload another image.")
+                risk_width = min(glucose_weighted / 300, 1.0) * 100
+                bar_color = "#8b0000"   # dark red
+                risk_text = "🔴 High Risk"
+            
+            st.markdown(f"""
+            <div style="
+                width:100%;
+                background-color:#d9d9d9;
+                border-radius:8px;
+                height:25px;
+            ">
+                <div style="
+                    width:{risk_width}%;
+                    background-color:{bar_color};
+                    height:25px;
+                    border-radius:8px;
+                "></div>
+            </div>
+            <p style="margin-top:6px; font-weight:600; color:black;">
+                {risk_text}
+            </p>
+            """, unsafe_allow_html=True)
 
             # Trend analysis
-            if len(st.session_state.history) > 0:
+            if len(st.session_state.history) == 0:
+                st.info("📍 First recorded reading — trend will appear from next measurement.")
+            
+            else:
                 prev = float(st.session_state.history[-1]["Glucose"])
                 delta = glucose_weighted - prev
-    
-                if delta > 10:
+            
+                if delta > 20:
                     st.warning(f"📈 Rising trend (+{delta:.1f} µM from previous)")
-                elif delta < -10:
+                elif delta < -20:
                     st.info(f"📉 Falling trend ({delta:.1f} µM from previous)")
                 else:
                     st.success("➖ Stable trend")
-        
+                    
             sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
             
             new_entry = {
@@ -352,12 +380,16 @@ with tab3:
 
         # Clear history button
         if st.button("🗑 Clear History"):
+            # Clear in-memory history
             st.session_state.history = []
-
-            if os.path.exists(csv_path):
-                os.remove(csv_path)
-
+        
+            # Reset CSV to empty file with headers
+            empty_df = pd.DataFrame(columns=["Time", "Glucose", "MealState"])
+            empty_df.to_csv(csv_path, index=False)
+        
+            st.success("History cleared successfully.")
             st.rerun()
+     
 
         st.dataframe(df)
 
