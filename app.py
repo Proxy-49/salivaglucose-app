@@ -260,19 +260,20 @@ This application estimates saliva glucose and hopes to reduce the need for invas
         st.image("https://img.icons8.com/fluency/96/combo-chart.png")
         st.caption("4️⃣ View result")
 
-
 # =====================================
 # Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
+    st.header("🧪 Saliva Glucose Estimation")
+
     meal_state = st.selectbox(
         "Measurement condition",
         ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
     )
-    
+
     uploaded_file = st.file_uploader(
         "Upload an image of your saliva bubbles",
-        type=["jpg","png","jpeg"]
+        type=["jpg", "png", "jpeg"]
     )
 
     if uploaded_file:
@@ -299,12 +300,10 @@ with tab2:
             st.image(img_rgb, caption="Uploaded Image")
             st.subheader("Estimated Glucose (µM)")
             st.write(f"**{glucose_weighted:.1f} µM**")
-        
-            # Out-of-bounds / invalid reading check
 
+            # Check for invalid reading
             if glucose_weighted < 10 or glucose_weighted > 250:
                 st.error("❌ Glucose reading out of valid range. Please re-upload the image.")
-                # Show error-style risk bar
                 st.markdown(f"""
                 <div style="
                     width:100%;
@@ -323,90 +322,77 @@ with tab2:
                     ❌ Invalid reading — image needs re-upload
                 </p>
                 """, unsafe_allow_html=True)
-                # Skip saving and trend analysis
-                return
-            
-            
-            # Risk zone visualisation
-            if 10 <= glucose_weighted <= 110:
-                bar_color = "#0b5d1e"  # dark green
-                risk_text = "🟢 Low Risk"
-                risk_width = (glucose_weighted - 10) / 100 * 100  # scale 10–110
-            
-            elif 110 < glucose_weighted <= 220:
-                bar_color = "#b8860b"  # amber
-                risk_text = "🟡 Moderate Risk"
-                risk_width = (glucose_weighted - 110) / 110 * 100  # scale 110–220
-            
-            else:  # 220–250
-                bar_color = "#8b0000"  # red
-                risk_text = "🔴 Very High Glucose Level Detected. Please confirm with finger-prick."
-                risk_width = (glucose_weighted - 220) / 30 * 100  # scale 220–250
-            
-            # Show risk bar
-            st.markdown(f"""
-            <div style="
-                width:100%;
-                background-color:#d9d9d9;
-                border-radius:8px;
-                height:25px;
-            ">
-                <div style="
-                    width:{risk_width}%;
-                    background-color:{bar_color};
-                    height:25px;
-                    border-radius:8px;
-                "></div>
-            </div>
-            <p style="margin-top:6px; font-weight:600; color:black;">
-                {risk_text}
-            </p>
-            """, unsafe_allow_html=True)
-            
-    
-            # Explanatory messages
-            
-            if 10 <= glucose_weighted <= 110:
-                st.success("✅ This is within expected healthy physiological saliva range.")
-            elif 110 < glucose_weighted <= 220:
-                st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
-            else:  # 220–250
-                st.error("❌ Very high glucose detected. Please confirm with finger-prick or clinical assessment.")
-            
-           
-            # Record valid reading in history
-            
-            sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
-            
-            new_entry = {
-                "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "Glucose": round(glucose_weighted, 1),
-                "MealState": meal_state
-            }
-            st.session_state.history.append(new_entry)
-            
-            # Save to CSV
-            pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
-            
-            
-            # Trend analysis (first reading check)
-            if len(st.session_state.history) == 1:
-                st.info("📍 First recorded reading — trend will appear from next measurement.")
             else:
-                prev = float(st.session_state.history[-2]["Glucose"])  # previous valid reading
-                delta = glucose_weighted - prev
-            
-                if delta > 20:
-                    st.warning(f"📈 Rising trend (+{delta:.1f} µM from previous)")
-                elif delta < -20:
-                    st.info(f"📉 Falling trend ({delta:.1f} µM from previous)")
+                # Risk visualization
+                if 10 <= glucose_weighted <= 110:
+                    bar_color = "#0b5d1e"
+                    risk_text = "🟢 Low Risk"
+                    risk_width = (glucose_weighted - 10) / 100 * 100
+                elif 110 < glucose_weighted <= 220:
+                    bar_color = "#b8860b"
+                    risk_text = "🟡 Moderate Risk"
+                    risk_width = (glucose_weighted - 110) / 110 * 100
                 else:
-                    st.success("➖ Stable trend")
-            
-        
+                    bar_color = "#8b0000"
+                    risk_text = "🔴 Very High Glucose Level Detected. Please confirm with finger-prick."
+                    risk_width = (glucose_weighted - 220) / 30 * 100
+
+                risk_width = min(risk_width, 100)
+
+                st.markdown(f"""
+                <div style="
+                    width:100%;
+                    background-color:#d9d9d9;
+                    border-radius:8px;
+                    height:25px;
+                ">
+                    <div style="
+                        width:{risk_width}%;
+                        background-color:{bar_color};
+                        height:25px;
+                        border-radius:8px;
+                    "></div>
+                </div>
+                <p style="margin-top:6px; font-weight:600; color:black;">
+                    {risk_text}
+                </p>
+                """, unsafe_allow_html=True)
+
+                # Explanatory messages
+                if 10 <= glucose_weighted <= 110:
+                    st.success("✅ This is within expected healthy physiological saliva range.")
+                elif 110 < glucose_weighted <= 220:
+                    st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
+                else:
+                    st.error("❌ Very high glucose detected. Please confirm with finger-prick or clinical assessment.")
+
+                # Record valid reading
+                sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
+                new_entry = {
+                    "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "Glucose": round(glucose_weighted, 1),
+                    "MealState": meal_state
+                }
+                st.session_state.history.append(new_entry)
+                pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
+
+                # Trend analysis
+                if len(st.session_state.history) == 1:
+                    st.info("📍 First recorded reading — trend will appear from next measurement.")
+                else:
+                    prev = float(st.session_state.history[-2]["Glucose"])
+                    delta = glucose_weighted - prev
+
+                    if delta > 20:
+                        st.warning(f"📈 Rising trend (+{delta:.1f} µM from previous)")
+                    elif delta < -20:
+                        st.info(f"📉 Falling trend ({delta:.1f} µM from previous)")
+                    else:
+                        st.success("➖ Stable trend")
+
         except Exception as e:
-            st.error(f"No bubbles detected in image, do upload another image: {e}")
-        
+            st.error(f"No bubbles detected in image, please upload another image. ({e})")
+
 # ==========================================
 #  HISTORY TAB
 # ==========================================
