@@ -261,7 +261,6 @@ This application estimates saliva glucose and hopes to reduce the need for invas
 # Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
-    with tab2:
     meal_state = st.selectbox(
         "Measurement condition",
         ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
@@ -322,22 +321,19 @@ with tab2:
         
             sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
             
-            st.session_state.history.append({
-            "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "Glucose": round(glucose_weighted, 1)
-            })
+           new_entry = {
+                "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "Glucose": round(glucose_weighted, 1),
+                "MealState": meal_state
+                }
+            
+            st.session_state.history.append(new_entry)
+            
+            pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
         
         except Exception as e:
             st.error(f"No bubbles detected in image, do upload another image: {e}")
-        new_entry = {
-            "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "Glucose": round(glucose_weighted, 1),
-            "MealState": meal_state
-        }
         
-        st.session_state.history.append(new_entry)
-        
-        pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
 # ==========================================
 #  HISTORY TAB
 # ==========================================
