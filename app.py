@@ -321,7 +321,7 @@ with tab2:
         
             sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
             
-           new_entry = {
+            new_entry = {
                 "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "Glucose": round(glucose_weighted, 1),
                 "MealState": meal_state
