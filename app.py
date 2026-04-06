@@ -28,6 +28,10 @@ html, body, [class*="css"] {
     color: black !important;
 }
 
+p, span, label, div, small {
+    color: black !important;
+}
+
 /* Title background */
 h1 {
     background-color: #C8E6C9 !important;  /* soft muted gold */
