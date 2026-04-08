@@ -427,8 +427,11 @@ with tab2:
                     "Glucose": round(glucose_weighted, 1),
                     "MealState": meal_state
                 }
-                st.session_state.history.append(new_entry)
-                pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
+                
+                if not any(e["Glucose"] == new_entry["Glucose"] for e in st.session_state.history[-2:]):
+                    st.session_state.history.append(new_entry)
+                    pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
+                    
 
                 # Trend analysis
                 if len(st.session_state.history) == 1:
