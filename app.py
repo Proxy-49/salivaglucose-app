@@ -264,11 +264,25 @@ model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_gluco
 # =====================================
 csv_path = "history.csv"
 
+# Load history safely
 if "history" not in st.session_state:
     if os.path.exists(csv_path):
-        st.session_state.history = pd.read_csv(csv_path).to_dict("records")
+        try:
+            df_loaded = pd.read_csv(csv_path)
+
+            if df_loaded.empty:
+                st.session_state.history = []
+            else:
+                st.session_state.history = df_loaded.to_dict("records")
+
+        except Exception:
+            st.session_state.history = []
     else:
         st.session_state.history = []
+
+# Track last processed upload
+if "last_processed_file" not in st.session_state:
+    st.session_state.last_processed_file = None
 
 # =====================================
 # TABS
@@ -315,140 +329,243 @@ This application estimates saliva glucose and hopes to reduce the need for invas
         st.image("https://img.icons8.com/fluency/96/combo-chart.png")
         st.caption("4️⃣ View result")
 
+
 # =====================================
 # Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
     st.header("🧪 Saliva Glucose Estimation")
 
+
+    # Initialize session flags
+
+    if "last_processed_file" not in st.session_state:
+        st.session_state.last_processed_file = None
+
     meal_state = st.selectbox(
         "Measurement condition",
         ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
     )
 
-    uploaded_file = st.file_uploader("Upload image", type=["jpg","jpeg","png"])
+    uploaded_file = st.file_uploader(
+        "Upload image",
+        type=["jpg", "jpeg", "png"]
+    )
 
+
+    # Process only NEW uploads
     if uploaded_file:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        raw_path = f"temp_{timestamp}.jpg"
-        std_path = f"std_{timestamp}.jpg"
-    
-        with open(raw_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-    
-        try:
-            standardize_image(raw_path, std_path)
-            avg_hsv, img_rgb = extract_bubble_features(std_path)
+        file_id = hash(uploaded_file.getvalue())
 
-            H_avg, S_avg, V_avg = avg_hsv
+        if file_id != st.session_state.last_processed_file:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            raw_path = f"temp_{timestamp}.jpg"
+            std_path = f"std_{timestamp}.jpg"
 
-            df_H  = pd.DataFrame({"H_corr":[H_avg]})
-            df_S  = pd.DataFrame({"S_corr":[S_avg]})
-            df_HS = pd.DataFrame({"H_corr":[H_avg], "S_corr":[S_avg]})
+            with open(raw_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
-            g_H  = max(model_H.predict(df_H)[0], 0)
-            g_S  = max(model_S.predict(df_S)[0], 0)
-            g_HS = max(model_HS.predict(df_HS)[0], 0)
-            
-            SALIVA_MATRIX_FACTOR = 2.0
-            glucose_raw = 0.2*g_H + 0.3*g_S + 0.5*g_HS
-            glucose_weighted = glucose_raw * SALIVA_MATRIX_FACTOR
+            try:
+                standardize_image(raw_path, std_path)
+                avg_hsv, img_rgb = extract_bubble_features(std_path)
 
-            st.image(img_rgb, caption="Uploaded Image")
-            st.subheader("Estimated Glucose (µM)")
-            st.write(f"**{glucose_weighted:.1f} µM**")
+                H_avg, S_avg, V_avg = avg_hsv
 
-            # Check for invalid reading
-            if glucose_weighted < 10 or glucose_weighted > 250:
-                st.error("❌ Glucose reading out of valid range. Please re-upload the image.")
-                st.markdown(f"""
-                <div style="
-                    width:100%;
-                    background-color:#d9d9d9;
-                    border-radius:8px;
-                    height:25px;
-                ">
+                df_H = pd.DataFrame({"H_corr": [H_avg]})
+                df_S = pd.DataFrame({"S_corr": [S_avg]})
+                df_HS = pd.DataFrame({
+                    "H_corr": [H_avg],
+                    "S_corr": [S_avg]
+                })
+
+                g_H = max(model_H.predict(df_H)[0], 0)
+                g_S = max(model_S.predict(df_S)[0], 0)
+                g_HS = max(model_HS.predict(df_HS)[0], 0)
+
+                # Matrix correction
+                SALIVA_MATRIX_FACTOR = 2.0
+                glucose_raw = 0.2 * g_H + 0.3 * g_S + 0.5 * g_HS
+                glucose_weighted = (
+                    glucose_raw * SALIVA_MATRIX_FACTOR
+                )
+
+                st.image(img_rgb, caption="Uploaded Image")
+                st.subheader("Estimated Glucose (µM)")
+                st.write(f"**{glucose_weighted:.1f} µM**")
+
+                # Invalid reading check
+                if glucose_weighted < 10 or glucose_weighted > 250:
+                    st.error(
+                        "❌ Glucose reading out of valid range. "
+                        "Please re-upload the image."
+                    )
+
+                    st.markdown("""
                     <div style="
                         width:100%;
-                        background-color:#8b0000;
-                        height:25px;
+                        background-color:#d9d9d9;
                         border-radius:8px;
-                    "></div>
-                </div>
-                <p style="margin-top:6px; font-weight:600; color:black;">
-                    ❌ Invalid reading — image needs re-upload
-                </p>
-                """, unsafe_allow_html=True)
-            else:
-                # Risk visualization
-                risk_width = (glucose_weighted - 10) / (250 - 10) * 100  # 0–100%
-                risk_width = np.clip(risk_width, 0, 100)
-                if glucose_weighted <= 110:
-                    bar_color = "#0b5d1e"  # green
-                    risk_text = "🟢 Low Risk"
-                elif glucose_weighted <= 220:
-                    bar_color = "#b8860b"  # yellow
-                    risk_text = "🟡 Moderate Risk"
-                else:
-                    bar_color = "#8b0000"  # red
-                    risk_text = "🔴 Very High Glucose Level"
-
-                st.markdown(f"""
-                <div style="
-                    width:100%;
-                    background-color:#d9d9d9;
-                    border-radius:8px;
-                    height:25px;
-                ">
-                    <div style="
-                        width:{risk_width}%;
-                        background-color:{bar_color};
                         height:25px;
-                        border-radius:8px;
-                    "></div>
-                </div>
-                <p style="margin-top:6px; font-weight:600; color:black;">
-                    {risk_text}
-                </p>
-                """, unsafe_allow_html=True)
+                    ">
+                        <div style="
+                            width:100%;
+                            background-color:#8b0000;
+                            height:25px;
+                            border-radius:8px;
+                        "></div>
+                    </div>
+                    <p style="
+                        margin-top:6px;
+                        font-weight:600;
+                        color:black;
+                    ">
+                        ❌ Invalid reading — image needs re-upload
+                    </p>
+                    """, unsafe_allow_html=True)
 
-                # Explanatory messages
-                if 10 <= glucose_weighted <= 110:
-                    st.success("✅ This is within expected healthy physiological saliva range.")
-                elif 110 < glucose_weighted <= 220:
-                    st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
                 else:
-                    st.error("❌ Very high glucose detected. Please confirm with finger-prick or clinical assessment.")
+                    # Risk visualization
+                    risk_width = (
+                        (glucose_weighted - 10) / (250 - 10)
+                    ) * 100
 
-                # Record valid reading
-                sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
-                new_entry = {
-                    "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
-                    "Glucose": round(glucose_weighted, 1),
-                    "MealState": meal_state
-                }
-                
-                if not any(e["Glucose"] == new_entry["Glucose"] for e in st.session_state.history[-2:]):
-                    st.session_state.history.append(new_entry)
-                    pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
-                    
+                    risk_width = np.clip(
+                        risk_width, 0, 100
+                    )
 
-                # Trend analysis
-                if len(st.session_state.history) == 1:
-                    st.info("📍 First recorded reading — trend will appear from next measurement.")
-                else:
-                    prev = float(st.session_state.history[-2]["Glucose"])
-                    delta = glucose_weighted - prev
+                    if glucose_weighted <= 110:
+                        bar_color = "#0b5d1e"
+                        risk_text = "🟢 Low Risk"
 
-                    if delta > 20:
-                        st.warning(f"📈 Rising trend (+{delta:.1f} µM from previous)")
-                    elif delta < -20:
-                        st.info(f"📉 Falling trend ({delta:.1f} µM from previous)")
+                    elif glucose_weighted <= 220:
+                        bar_color = "#b8860b"
+                        risk_text = "🟡 Moderate Risk"
+
                     else:
-                        st.success("➖ Stable trend")
+                        bar_color = "#8b0000"
+                        risk_text = (
+                            "🔴 Very High Glucose Level"
+                        )
 
-        except Exception as e:
-            st.error(f"No bubbles detected in image, please upload another image. ({e})")
+                    st.markdown(f"""
+                    <div style="
+                        width:100%;
+                        background-color:#d9d9d9;
+                        border-radius:8px;
+                        height:25px;
+                    ">
+                        <div style="
+                            width:{risk_width}%;
+                            background-color:{bar_color};
+                            height:25px;
+                            border-radius:8px;
+                        "></div>
+                    </div>
+                    <p style="
+                        margin-top:6px;
+                        font-weight:600;
+                        color:black;
+                    ">
+                        {risk_text}
+                    </p>
+                    """, unsafe_allow_html=True)
+
+                    # Clinical message
+                    if 10 <= glucose_weighted <= 110:
+                        st.success(
+                            "✅ This is within expected healthy "
+                            "physiological saliva range."
+                        )
+
+                    elif 110 < glucose_weighted <= 220:
+                        st.warning(
+                            "⚠️ Elevated saliva glucose detected. "
+                            "Consider confirmatory finger-prick "
+                            "or clinical assessment."
+                        )
+
+                    else:
+                        st.error(
+                            "❌ Very high glucose detected. "
+                            "Please confirm with finger-prick "
+                            "or clinical assessment."
+                        )
+
+                    # Save valid reading
+                    
+                    sg_time = datetime.now(
+                        ZoneInfo("Asia/Singapore")
+                    )
+
+                    new_entry = {
+                        "Time": sg_time.strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "Glucose": round(
+                            glucose_weighted, 1
+                        ),
+                        "MealState": meal_state
+                    }
+
+                    st.session_state.history.append(
+                        new_entry
+                    )
+
+                    pd.DataFrame(
+                        st.session_state.history
+                    ).to_csv(csv_path, index=False)
+
+                    # mark upload as processed
+                    st.session_state.last_processed_file = (
+                        file_id
+                    )
+
+
+                    # Trend analysis
+                    if len(
+                        st.session_state.history
+                    ) == 1:
+                        st.info(
+                            "📍 First recorded reading — "
+                            "trend will appear from next "
+                            "measurement."
+                        )
+
+                    else:
+                        prev = float(
+                            st.session_state.history[-2][
+                                "Glucose"
+                            ]
+                        )
+
+                        delta = (
+                            glucose_weighted - prev
+                        )
+
+                        if delta > 20:
+                            st.warning(
+                                f"📈 Rising trend "
+                                f"(+{delta:.1f} µM "
+                                f"from previous)"
+                            )
+
+                        elif delta < -20:
+                            st.info(
+                                f"📉 Falling trend "
+                                f"({delta:.1f} µM "
+                                f"from previous)"
+                            )
+
+                        else:
+                            st.success(
+                                "➖ Stable trend"
+                            )
+
+            except Exception as e:
+                st.error(
+                    "No bubbles detected in image, "
+                    f"please upload another image. ({e})"
+                )
 
 # ==========================================
 #  HISTORY TAB
