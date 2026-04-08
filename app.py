@@ -336,12 +336,6 @@ This application estimates saliva glucose and hopes to reduce the need for invas
 with tab2:
     st.header("🧪 Saliva Glucose Estimation")
 
-
-    # Initialize session flags
-
-    if "last_processed_file" not in st.session_state:
-        st.session_state.last_processed_file = None
-
     meal_state = st.selectbox(
         "Measurement condition",
         ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
@@ -572,20 +566,6 @@ with tab2:
 # ==========================================
 with tab3:
     st.header("Historical Results Log")
-
-    # -----------------------------
-    # Load history once
-    # -----------------------------
-    if "history_loaded" not in st.session_state:
-        if os.path.exists(csv_path):
-            try:
-                st.session_state.history = pd.read_csv(csv_path).to_dict("records")
-            except Exception:
-                st.session_state.history = []
-        else:
-            st.session_state.history = []
-
-        st.session_state.history_loaded = True
 
     # -----------------------------
     # Clear history button
