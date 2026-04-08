@@ -67,16 +67,22 @@ st.title("Saliva Glucose Monitoring Platform")
 # =====================================
 def standardize_image(input_path, output_path):
     img = Image.open(input_path)
-
-    # Convert ALL formats (HEIC, PNG, etc.) → RGB
+    img = ImageOps.exif_transpose(img)
     img = img.convert("RGB")
 
-    # Resize for consistency
-    img = img.resize((800, 800))
+    width, height = img.size
+    max_size = 800
 
-    # Save as standard JPEG
+    if max(width, height) > max_size:
+        if width >= height:
+            new_width = max_size
+            new_height = int(height * max_size / width)
+        else:
+            new_height = max_size
+            new_width = int(width * max_size / height)
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
     img.save(output_path, format="JPEG", quality=95)
-
     return output_path
 
 # =====================================
