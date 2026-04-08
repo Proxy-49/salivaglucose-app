@@ -456,11 +456,12 @@ with tab2:
 with tab3:
     st.header("Historical Results Log")
 
-        # FORCE REFRESH FROM FILE (ignores cache)
     if os.path.exists(csv_path):
-        current_file_history = pd.read_csv(csv_path).to_dict("records")
-        if "history" in st.session_state and len(st.session_state.history) != len(current_file_history):
-            st.session_state.history = current_file_history
+        try:
+            fresh_history = pd.read_csv(csv_path).to_dict("records")
+            st.session_state.history = fresh_history  # Always use FRESH file data
+        except:
+            st.session_state.history = []
 
     if len(st.session_state.history) > 0:
         df = pd.DataFrame(st.session_state.history)
@@ -471,13 +472,14 @@ with tab3:
         # Clear history button
         if st.button("🗑 Clear History"):
             # Clear in-memory history
-            st.session_state.history = []
+            st.session_state.history = []   
+            st.cache_data.clear()
+            st.experimental_rerun()
         
             # Reset CSV to empty file with headers
             empty_df = pd.DataFrame(columns=["Time", "Glucose", "MealState"])
             empty_df.to_csv(csv_path, index=False)
         
-            st.cache_data.clear() 
             st.success("History cleared successfully.")
             st.rerun()
      
