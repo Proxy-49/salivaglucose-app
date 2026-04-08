@@ -343,7 +343,7 @@ with tab2:
             g_S  = max(model_S.predict(df_S)[0], 0)
             g_HS = max(model_HS.predict(df_HS)[0], 0)
             
-            SALIVA_MATRIX_FACTOR = 1.20
+            SALIVA_MATRIX_FACTOR = 2.0
             glucose_raw = 0.2*g_H + 0.3*g_S + 0.5*g_HS
             glucose_weighted = glucose_raw * SALIVA_MATRIX_FACTOR
 
@@ -517,31 +517,73 @@ with tab4:
 
     st.subheader("Carbohydrate Counter")
 
-    carbs_per_serving = {
-        "Rice (1 serving)": 45,
-        "Bread (2 slices)": 30,
-        "Apple (1 piece)": 15,
-        "Banana (1 piece)": 27,
-        "Noodles (1 serving)": 40,
-        "Pasta (1 serving)": 42,
-        "Crackers (5 pieces)": 15,
-        "Milk (1 cup)": 12
-    }
+  carbs_per_serving = {
+    # common foods  
+    "Rice (1 serving)": 45,
+    "Bread (2 slices)": 30,
+    "Apple (1 piece)": 15,
+    "Banana (1 piece)": 27,
+    "Noodles (1 serving)": 40,
+    "Pasta (1 serving)": 42,
+    "Crackers (5 pieces)": 15,
+    "Milk (1 cup)": 12,
+    "Chocolate bar (50g)": 25,
+    "Glucose tablet (4g)": 4,
+    "Orange juice (250ml)": 25,
+    "Cereal (1 bowl)": 35,
+    "Oats (40g)": 25,
+    "Yogurt (150g)": 15,
+    "Cookies (3 pieces)": 20,
+    
+    # Singapore hawker foods
+    "Hainanese Chicken Rice (1 serving)": 60,
+    "Nasi Lemak (1 serving)": 45,
+    "Roti Prata (1 serving)": 35,
+    "Laksa (1 serving)": 55,
+    "Char Kway Teow (1 serving)": 65,
+    "Mee Goreng (1 serving)": 70,
+    "Bak Kut Teh (1 serving)": 40,
+    "Hokkien Mee (1 serving)": 69,
+    "Bee Hoon Goreng (1 serving)": 45,
+    "Rojak (1 serving)": 50,
+    "Nasi Briyani (1 serving)": 80,
+    "Mee Rebus (1 serving)": 60,
+    
+    # Singapore drinks
+    "Teh Tarik (1 cup)": 18,
+    "Teh O (1 cup)": 10,
+    "Teh C (1 cup)": 15,
+    "Kopi (1 cup)": 10,
+    "Kopi O (1 cup)": 5,
+    "Kopi C (1 cup)": 12,
+    "Milo (1 cup)": 25,
+    "Horlicks (1 cup)": 30,
+    "Bandung (1 cup)": 25,
+    "Ice Lemon Tea (1 cup)": 30
 
-    food = st.selectbox(
-        "Select food item",
-        list(carbs_per_serving.keys())
+}
+
+    # Multi-select with up to 4 items
+    selected_foods = st.multiselect(
+        "Select up to 4 food items (leave blank for none)",
+        list(carbs_per_serving.keys()),
+        max_selections=4
     )
 
-    quantity = st.number_input(
-        "Number of servings",
-        min_value=1,
-        value=1
-    )
+    # Quantity input for each selected food
+    total_carbs = 0
+    if selected_foods:
+        for food in selected_foods:
+            qty = st.number_input(
+                f"Servings of {food}",
+                min_value=0.25, value=1.0, step=0.25,
+                key=f"qty_{food}"
+            )
+            carbs = carbs_per_serving[food] * qty
+            total_carbs += carbs
+            st.write(f"**{food}:** {carbs:.1f}g carbs")
 
-    total_carbs = carbs_per_serving[food] * quantity
-
-    st.metric("Estimated Carbohydrate Intake", f"{total_carbs} g")
+    st.metric("Total Carbohydrate Intake", f"{total_carbs:.1f} g")
 
 
 # =====================================
