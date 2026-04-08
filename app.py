@@ -32,6 +32,12 @@ p, span, label, div, small {
     color: black !important;
 }
 
+[data-testid="stMultiSelect"] div[role="listbox"] div[aria-selected="true"] {
+    background-color: #A5D6A7 !important;  /* active tab green */
+    color: black !important;
+    border: 1px solid #C6EAC6 !important;
+}
+
 /* Title background */
 h1 {
     background-color: #C8E6C9 !important;  /* soft muted gold */
