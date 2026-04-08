@@ -560,6 +560,12 @@ with tab2:
                     "No bubbles detected in image, "
                     f"please upload another image. ({e})"
                 )
+            finally:
+                if os.path.exists(raw_path):
+                    os.remove(raw_path)
+            
+                if os.path.exists(std_path):
+                    os.remove(std_path)
 
 # ==========================================
 #  HISTORY TAB
