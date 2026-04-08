@@ -28,6 +28,10 @@ html, body, [class*="css"] {
     color: black !important;
 }
 
+p, span, label, div, small {
+    color: black !important;
+}
+
 /* Title background */
 h1 {
     background-color: #C8E6C9 !important;  /* soft muted gold */
@@ -199,10 +203,17 @@ model_H  = LinearRegression().fit(calibration_data[["H_corr"]], y_glucose)
 model_S  = LinearRegression().fit(calibration_data[["S_corr"]], y_glucose)
 model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_glucose)
 
+# =====================================
+# HISTORY INITIALIZATION + PERSISTENCE
+# =====================================
+csv_path = "history.csv"
 
-# Initialize session state
 if "history" not in st.session_state:
-    st.session_state.history = []
+    if os.path.exists(csv_path):
+        st.session_state.history = pd.read_csv(csv_path).to_dict("records")
+    else:
+        st.session_state.history = []
+
     
 # =====================================
 # TABS
@@ -249,14 +260,20 @@ This application estimates saliva glucose and hopes to reduce the need for invas
         st.image("https://img.icons8.com/fluency/96/combo-chart.png")
         st.caption("4️⃣ View result")
 
-
 # =====================================
 # Saliva Glucose Estimation TAB
 # =====================================
 with tab2:
+    st.header("🧪 Saliva Glucose Estimation")
+
+    meal_state = st.selectbox(
+        "Measurement condition",
+        ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
+    )
+
     uploaded_file = st.file_uploader(
         "Upload an image of your saliva bubbles",
-        type=["jpg","png","jpeg"]
+        type=["jpg", "png", "jpeg"]
     )
 
     if uploaded_file:
@@ -277,30 +294,104 @@ with tab2:
             g_H  = max(model_H.predict(df_H)[0], 0)
             g_S  = max(model_S.predict(df_S)[0], 0)
             g_HS = max(model_HS.predict(df_HS)[0], 0)
-
-            glucose_weighted = 0.2*g_H + 0.3*g_S + 0.5*g_HS
+            
+            SALIVA_MATRIX_FACTOR = 1.20
+            glucose_raw = 0.2*g_H + 0.3*g_S + 0.5*g_HS
+            glucose_weighted = glucose_raw * SALIVA_MATRIX_FACTOR
 
             st.image(img_rgb, caption="Uploaded Image")
             st.subheader("Estimated Glucose (µM)")
             st.write(f"**{glucose_weighted:.1f} µM**")
 
-            if 0 <= glucose_weighted <= 150:
-                st.success("✅ This is within expected healthy physiological saliva range.")
-            elif 150 < glucose_weighted <= 250:
-                st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
+            # Check for invalid reading
+            if glucose_weighted < 10 or glucose_weighted > 250:
+                st.error("❌ Glucose reading out of valid range. Please re-upload the image.")
+                st.markdown(f"""
+                <div style="
+                    width:100%;
+                    background-color:#d9d9d9;
+                    border-radius:8px;
+                    height:25px;
+                ">
+                    <div style="
+                        width:100%;
+                        background-color:#8b0000;
+                        height:25px;
+                        border-radius:8px;
+                    "></div>
+                </div>
+                <p style="margin-top:6px; font-weight:600; color:black;">
+                    ❌ Invalid reading — image needs re-upload
+                </p>
+                """, unsafe_allow_html=True)
             else:
-                st.error("❌ Unusual Glucose Level detected, do upload another image.")
-           
-            sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
-            
-            st.session_state.history.append({
-            "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "Glucose": round(glucose_weighted, 1)
-            })
-        
+                # Risk visualization
+                risk_width = (glucose_weighted - 10) / (250 - 10) * 100  # 0–100%
+                risk_width = np.clip(risk_width, 0, 100)
+                if glucose_weighted <= 110:
+                    bar_color = "#0b5d1e"  # green
+                    risk_text = "🟢 Low Risk"
+                elif glucose_weighted <= 220:
+                    bar_color = "#b8860b"  # yellow
+                    risk_text = "🟡 Moderate Risk"
+                else:
+                    bar_color = "#8b0000"  # red
+                    risk_text = "🔴 Very High Glucose Level"
+
+                st.markdown(f"""
+                <div style="
+                    width:100%;
+                    background-color:#d9d9d9;
+                    border-radius:8px;
+                    height:25px;
+                ">
+                    <div style="
+                        width:{risk_width}%;
+                        background-color:{bar_color};
+                        height:25px;
+                        border-radius:8px;
+                    "></div>
+                </div>
+                <p style="margin-top:6px; font-weight:600; color:black;">
+                    {risk_text}
+                </p>
+                """, unsafe_allow_html=True)
+
+                # Explanatory messages
+                if 10 <= glucose_weighted <= 110:
+                    st.success("✅ This is within expected healthy physiological saliva range.")
+                elif 110 < glucose_weighted <= 220:
+                    st.warning("⚠️ Elevated saliva glucose detected. Consider confirmatory finger-prick or clinical assessment.")
+                else:
+                    st.error("❌ Very high glucose detected. Please confirm with finger-prick or clinical assessment.")
+
+                # Record valid reading
+                sg_time = datetime.now(ZoneInfo("Asia/Singapore"))
+                new_entry = {
+                    "Time": sg_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "Glucose": round(glucose_weighted, 1),
+                    "MealState": meal_state
+                }
+                st.session_state.history.append(new_entry)
+                pd.DataFrame(st.session_state.history).to_csv(csv_path, index=False)
+
+                # Trend analysis
+                if len(st.session_state.history) == 1:
+                    st.info("📍 First recorded reading — trend will appear from next measurement.")
+                else:
+                    prev = float(st.session_state.history[-2]["Glucose"])
+                    delta = glucose_weighted - prev
+
+                    if delta > 20:
+                        st.warning(f"📈 Rising trend (+{delta:.1f} µM from previous)")
+                    elif delta < -20:
+                        st.info(f"📉 Falling trend ({delta:.1f} µM from previous)")
+                    else:
+                        st.success("➖ Stable trend")
+
         except Exception as e:
-            st.error(f"No bubbles detected in image, do upload another image: {e}")
-        
+            st.error(f"No bubbles detected in image, please upload another image. ({e})")
+
 # ==========================================
 #  HISTORY TAB
 # ==========================================
@@ -310,14 +401,57 @@ with tab3:
     if len(st.session_state.history) > 0:
         df = pd.DataFrame(st.session_state.history)
 
+        df["Glucose"] = pd.to_numeric(df["Glucose"])
+        df["MovingAvg"] = df["Glucose"].rolling(window=3).mean()
+
+        # Clear history button
+        if st.button("🗑 Clear History"):
+            # Clear in-memory history
+            st.session_state.history = []
+        
+            # Reset CSV to empty file with headers
+            empty_df = pd.DataFrame(columns=["Time", "Glucose", "MealState"])
+            empty_df.to_csv(csv_path, index=False)
+        
+            st.success("History cleared successfully.")
+            st.rerun()
+     
+
         st.dataframe(df)
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(df["Time"], df["Glucose"], marker="o")
+        st.download_button(
+            "⬇ Download History CSV",
+            df.to_csv(index=False),
+            file_name="glucose_history.csv",
+            mime="text/csv"
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Average", f"{df['Glucose'].mean():.1f} µM")
+
+        with col2:
+            st.metric("Minimum", f"{df['Glucose'].min():.1f} µM")
+
+        with col3:
+            st.metric("Maximum", f"{df['Glucose'].max():.1f} µM")
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        ax.plot(df["Time"], df["Glucose"], marker="o", label="Glucose")
+        ax.plot(df["Time"], df["MovingAvg"], linestyle="--", label="Moving Avg (3)")
+        ax.axhline(df["Glucose"].min(), linestyle=":", label="Min")
+        ax.axhline(df["Glucose"].max(), linestyle=":", label="Max")
+
         ax.set_ylabel("Glucose (µM)")
         ax.set_xlabel("Date | Time")
+        ax.tick_params(axis="x", rotation=45)
+
+        ax.legend()
 
         st.pyplot(fig)
+
     else:
         st.info("No historical data available yet.")
 # =====================================
