@@ -294,8 +294,10 @@ with tab2:
             g_H  = max(model_H.predict(df_H)[0], 0)
             g_S  = max(model_S.predict(df_S)[0], 0)
             g_HS = max(model_HS.predict(df_HS)[0], 0)
-
-            glucose_weighted = 0.2*g_H + 0.3*g_S + 0.5*g_HS
+            
+            SALIVA_MATRIX_FACTOR = 1.20
+            glucose_raw = 0.2*g_H + 0.3*g_S + 0.5*g_HS
+            glucose_weighted = glucose_raw * SALIVA_MATRIX_FACTOR
 
             st.image(img_rgb, caption="Uploaded Image")
             st.subheader("Estimated Glucose (µM)")
