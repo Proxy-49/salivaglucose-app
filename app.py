@@ -319,17 +319,14 @@ with tab2:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         raw_path = f"temp_{timestamp}.jpg"
         std_path = f"std_{timestamp}.jpg"
-
-        # Save raw upload
+    
         with open(raw_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
-
-        # Standardise image (NEW)
-        standardize_image(raw_path, std_path)
-            
-
+    
         try:
+            standardize_image(raw_path, std_path)
             avg_hsv, img_rgb = extract_bubble_features(std_path)
+
             H_avg, S_avg, V_avg = avg_hsv
 
             df_H  = pd.DataFrame({"H_corr":[H_avg]})
