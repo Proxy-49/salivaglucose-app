@@ -1,5 +1,3 @@
-# app_glucose_only.py
-
 import streamlit as st
 import cv2
 import numpy as np
@@ -9,6 +7,7 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from sklearn.linear_model import LinearRegression
+from PIL import Image
 
 # --------------------------
 # Streamlit UI config
@@ -60,7 +59,24 @@ button[data-baseweb="tab"][data-selected="true"] {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧪 Saliva Glucose Monitoring Platform")
+st.title("Saliva Glucose Monitoring Platform")
+
+# =====================================
+# IMAGE STANDARDISATION 
+# =====================================
+def standardize_image(input_path, output_path):
+    img = Image.open(input_path)
+
+    # Convert ALL formats (HEIC, PNG, etc.) → RGB
+    img = img.convert("RGB")
+
+    # Resize for consistency
+    img = img.resize((800, 800))
+
+    # Save as standard JPEG
+    img.save(output_path, format="JPEG", quality=95)
+
+    return output_path
 
 # =====================================
 # RGB TO HSV
@@ -95,28 +111,31 @@ def rgb_to_hsv(rgb):
     return np.stack([h, s, v], axis=1)
 
 # =====================================
-# BUBBLE FEATURE EXTRACTION (UPDATED)
+# BUBBLE FEATURE EXTRACTION 
 # =====================================
 def extract_bubble_features(image_path, top_n=20):
-    img = cv2.imread(image_path)
 
+    img = cv2.imread(image_path)
     if img is None:
-        raise ValueError(f"Cannot read image {image_path}")
+        raise ValueError("Cannot read image")
 
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Normalize intensity 
+    img_rgb = img_rgb.astype(np.float32) / 255.0
 
-    # Improve contrast
-    gray_contrast = cv2.equalizeHist(gray)
+    # Grayscale
+    gray = cv2.cvtColor((img_rgb*255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
 
-    # Reduce noise
-    gray_blur = cv2.GaussianBlur(gray_contrast, (5, 5), 1.2)
+    # Contrast enhancement
+    gray = cv2.equalizeHist(gray)
 
-    # Improved Hough circle detection
+    # Blur
+    gray = cv2.GaussianBlur(gray, (5,5), 1.2)
+
+    # Hough circles
     circles = cv2.HoughCircles(
-        gray_blur,
+        gray,
         cv2.HOUGH_GRADIENT,
         dp=1.1,
         minDist=15,
@@ -127,14 +146,14 @@ def extract_bubble_features(image_path, top_n=20):
     )
 
     if circles is None:
-        raise ValueError("No bubbles detected.")
+        raise ValueError("No bubbles detected")
 
     circles = np.round(circles[0]).astype(int)
 
     candidates = []
 
     for x, y, r in circles:
-        # Keep almost full bubble region
+
         r_roi = int(r * 0.95)
 
         Y, X = np.ogrid[:img_rgb.shape[0], :img_rgb.shape[1]]
@@ -145,7 +164,7 @@ def extract_bubble_features(image_path, top_n=20):
         if roi_rgb.size == 0:
             continue
 
-        roi_hsv = rgb_to_hsv(roi_rgb / 255.0)
+        roi_hsv = rgb_to_hsv(roi_rgb)
 
         h_mean, s_mean, v_mean = roi_hsv.mean(axis=0)
 
@@ -158,25 +177,48 @@ def extract_bubble_features(image_path, top_n=20):
             score = (h_mean**8) * s_mean * v_mean * r_roi
 
             candidates.append({
+                "x": x,
+                "y": y,
+                "r": r_roi,
                 "roi_hsv": roi_hsv,
                 "score": score
             })
 
     if len(candidates) == 0:
-        raise ValueError("No bubbles passed HSV filter.")
+        raise ValueError("No valid bubbles detected")
 
-    candidates = sorted(
-        candidates,
-        key=lambda b: b["score"],
-        reverse=True
-    )[:top_n]
+    # =====================================
+    # OVERLAP FILTERING
+    # =====================================
+    candidates = sorted(candidates, key=lambda b: b["score"], reverse=True)
+
+    selected = []
+
+    for b in candidates:
+        overlap = False
+
+        for sb in selected:
+            dx = b["x"] - sb["x"]
+            dy = b["y"] - sb["y"]
+            dist = np.sqrt(dx**2 + dy**2)
+
+            if dist < (b["r"] + sb["r"]):
+                overlap = True
+                break
+
+        if not overlap:
+            selected.append(b)
+
+        if len(selected) >= top_n:
+            break
 
     avg_hsv = np.mean(
-        [b["roi_hsv"].mean(axis=0) for b in candidates],
+        [b["roi_hsv"].mean(axis=0) for b in selected],
         axis=0
     )
 
-    return avg_hsv, img_rgb
+    return avg_hsv, (img_rgb*255).astype(np.uint8)
+
 
 # =====================================
 # CALIBRATION MODEL
@@ -214,7 +256,6 @@ if "history" not in st.session_state:
     else:
         st.session_state.history = []
 
-    
 # =====================================
 # TABS
 # =====================================
@@ -271,25 +312,28 @@ with tab2:
         ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
     )
 
-    uploaded_file = st.file_uploader(
-        "Upload an image of your saliva bubbles",
-        type=["jpg", "png", "jpeg"]
-    )
+    uploaded_file = st.file_uploader("Upload image", type=["jpg","jpeg","png"])
 
     if uploaded_file:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        temp_path = f"temp_{timestamp}.jpg"
+        raw_path = f"temp_{timestamp}.jpg"
+        std_path = f"std_{timestamp}.jpg"
 
-        with open(temp_path, "wb") as f:
+        # Save raw upload
+        with open(raw_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
+        # Standardise image (NEW)
+        standardize_image(raw_path, std_path)
+            
+
         try:
-            avg_hsv, img_rgb = extract_bubble_features(temp_path)
+            avg_hsv, img_rgb = extract_bubble_features(std_path)
             H_avg, S_avg, V_avg = avg_hsv
 
-            df_H  = pd.DataFrame({"H_corr":[H_avg]})
-            df_S  = pd.DataFrame({"S_corr":[S_avg]})
-            df_HS = pd.DataFrame({"H_corr":[H_avg], "S_corr":[S_avg]})
+            df_H  = pd.DataFrame({"H":[H_avg]})
+            df_S  = pd.DataFrame({"S":[S_avg]})
+            df_HS = pd.DataFrame({"H":[H_avg], "S":[S_avg]})
 
             g_H  = max(model_H.predict(df_H)[0], 0)
             g_S  = max(model_S.predict(df_S)[0], 0)
