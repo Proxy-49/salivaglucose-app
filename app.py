@@ -8,7 +8,7 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from sklearn.linear_model import LinearRegression
-from PIL import Image
+from PIL import Image, ImageOps
 
 # --------------------------
 # Streamlit UI config
