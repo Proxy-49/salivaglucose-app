@@ -456,33 +456,41 @@ with tab2:
 with tab3:
     st.header("Historical Results Log")
 
-    if os.path.exists(csv_path):
-        try:
-            fresh_history = pd.read_csv(csv_path).to_dict("records")
-            st.session_state.history = fresh_history  # Always use FRESH file data
-        except:
+    # -----------------------------
+    # Load history once
+    # -----------------------------
+    if "history_loaded" not in st.session_state:
+        if os.path.exists(csv_path):
+            try:
+                st.session_state.history = pd.read_csv(csv_path).to_dict("records")
+            except Exception:
+                st.session_state.history = []
+        else:
             st.session_state.history = []
 
+        st.session_state.history_loaded = True
+
+    # -----------------------------
+    # Clear history button
+    # -----------------------------
+    if st.button("🗑 Clear History"):
+        st.session_state.history = []
+
+        empty_df = pd.DataFrame(
+            columns=["Time", "Glucose", "MealState"]
+        )
+        empty_df.to_csv(csv_path, index=False)
+
+        st.rerun()
+
+    # -----------------------------
+    # Display history
+    # -----------------------------
     if len(st.session_state.history) > 0:
         df = pd.DataFrame(st.session_state.history)
 
         df["Glucose"] = pd.to_numeric(df["Glucose"])
         df["MovingAvg"] = df["Glucose"].rolling(window=3).mean()
-
-        # Clear history button
-        if st.button("🗑 Clear History"):
-            # Clear in-memory history
-            st.session_state.history = []   
-            st.cache_data.clear()
-            st.experimental_rerun()
-        
-            # Reset CSV to empty file with headers
-            empty_df = pd.DataFrame(columns=["Time", "Glucose", "MealState"])
-            empty_df.to_csv(csv_path, index=False)
-        
-            st.success("History cleared successfully.")
-            st.rerun()
-     
 
         st.dataframe(df)
 
@@ -506,15 +514,35 @@ with tab3:
 
         fig, ax = plt.subplots(figsize=(10, 5))
 
-        ax.plot(df["Time"], df["Glucose"], marker="o", label="Glucose")
-        ax.plot(df["Time"], df["MovingAvg"], linestyle="--", label="Moving Avg (3)")
-        ax.axhline(df["Glucose"].min(), linestyle=":", label="Min")
-        ax.axhline(df["Glucose"].max(), linestyle=":", label="Max")
+        ax.plot(
+            df["Time"],
+            df["Glucose"],
+            marker="o",
+            label="Glucose"
+        )
+
+        ax.plot(
+            df["Time"],
+            df["MovingAvg"],
+            linestyle="--",
+            label="Moving Avg (3)"
+        )
+
+        ax.axhline(
+            df["Glucose"].min(),
+            linestyle=":",
+            label="Min"
+        )
+
+        ax.axhline(
+            df["Glucose"].max(),
+            linestyle=":",
+            label="Max"
+        )
 
         ax.set_ylabel("Glucose (µM)")
         ax.set_xlabel("Date | Time")
         ax.tick_params(axis="x", rotation=45)
-
         ax.legend()
 
         st.pyplot(fig)
