@@ -517,51 +517,51 @@ with tab4:
 
     st.subheader("Carbohydrate Counter")
 
-  carbs_per_serving = {
-    # common foods  
-    "Rice (1 serving)": 45,
-    "Bread (2 slices)": 30,
-    "Apple (1 piece)": 15,
-    "Banana (1 piece)": 27,
-    "Noodles (1 serving)": 40,
-    "Pasta (1 serving)": 42,
-    "Crackers (5 pieces)": 15,
-    "Milk (1 cup)": 12,
-    "Chocolate bar (50g)": 25,
-    "Glucose tablet (4g)": 4,
-    "Orange juice (250ml)": 25,
-    "Cereal (1 bowl)": 35,
-    "Oats (40g)": 25,
-    "Yogurt (150g)": 15,
-    "Cookies (3 pieces)": 20,
-    
-    # Singapore hawker foods
-    "Hainanese Chicken Rice (1 serving)": 60,
-    "Nasi Lemak (1 serving)": 45,
-    "Roti Prata (1 serving)": 35,
-    "Laksa (1 serving)": 55,
-    "Char Kway Teow (1 serving)": 65,
-    "Mee Goreng (1 serving)": 70,
-    "Bak Kut Teh (1 serving)": 40,
-    "Hokkien Mee (1 serving)": 69,
-    "Bee Hoon Goreng (1 serving)": 45,
-    "Rojak (1 serving)": 50,
-    "Nasi Briyani (1 serving)": 80,
-    "Mee Rebus (1 serving)": 60,
-    
-    # Singapore drinks
-    "Teh Tarik (1 cup)": 18,
-    "Teh O (1 cup)": 10,
-    "Teh C (1 cup)": 15,
-    "Kopi (1 cup)": 10,
-    "Kopi O (1 cup)": 5,
-    "Kopi C (1 cup)": 12,
-    "Milo (1 cup)": 25,
-    "Horlicks (1 cup)": 30,
-    "Bandung (1 cup)": 25,
-    "Ice Lemon Tea (1 cup)": 30
+    carbs_per_serving = {
+            # common foods  
+            "Rice (1 serving)": 45,
+            "Bread (2 slices)": 30,
+            "Apple (1 piece)": 15,
+            "Banana (1 piece)": 27,
+            "Noodles (1 serving)": 40,
+            "Pasta (1 serving)": 42,
+            "Crackers (5 pieces)": 15,
+            "Milk (1 cup)": 12,
+            "Chocolate bar (50g)": 25,
+            "Glucose tablet (4g)": 4,
+            "Orange juice (250ml)": 25,
+            "Cereal (1 bowl)": 35,
+            "Oats (40g)": 25,
+            "Yogurt (150g)": 15,
+            "Cookies (3 pieces)": 20,
+            
+            # Singapore hawker foods
+            "Hainanese Chicken Rice (1 serving)": 60,
+            "Nasi Lemak (1 serving)": 45,
+            "Roti Prata (1 serving)": 35,
+            "Laksa (1 serving)": 55,
+            "Char Kway Teow (1 serving)": 65,
+            "Mee Goreng (1 serving)": 70,
+            "Bak Kut Teh (1 serving)": 40,
+            "Hokkien Mee (1 serving)": 69,
+            "Bee Hoon Goreng (1 serving)": 45,
+            "Rojak (1 serving)": 50,
+            "Nasi Briyani (1 serving)": 80,
+            "Mee Rebus (1 serving)": 60,
+            
+            # Singapore drinks
+            "Teh Tarik (1 cup)": 18,
+            "Teh O (1 cup)": 10,
+            "Teh C (1 cup)": 15,
+            "Kopi (1 cup)": 10,
+            "Kopi O (1 cup)": 5,
+            "Kopi C (1 cup)": 12,
+            "Milo (1 cup)": 25,
+            "Horlicks (1 cup)": 30,
+            "Bandung (1 cup)": 25,
+            "Ice Lemon Tea (1 cup)": 30
 
-}
+            }
 
     # Multi-select with up to 4 items
     selected_foods = st.multiselect(
