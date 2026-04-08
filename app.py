@@ -331,9 +331,9 @@ with tab2:
             avg_hsv, img_rgb = extract_bubble_features(std_path)
             H_avg, S_avg, V_avg = avg_hsv
 
-            df_H  = pd.DataFrame({"H":[H_avg]})
-            df_S  = pd.DataFrame({"S":[S_avg]})
-            df_HS = pd.DataFrame({"H":[H_avg], "S":[S_avg]})
+            df_H  = pd.DataFrame({"H_corr":[H_avg]})
+            df_S  = pd.DataFrame({"S_corr":[S_avg]})
+            df_HS = pd.DataFrame({"H_corr":[H_avg], "S_corr":[S_avg]})
 
             g_H  = max(model_H.predict(df_H)[0], 0)
             g_S  = max(model_S.predict(df_S)[0], 0)
