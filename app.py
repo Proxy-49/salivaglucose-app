@@ -32,10 +32,11 @@ p, span, label, div, small {
     color: black !important;
 }
 
-[data-testid="stMultiSelect"] div[role="listbox"] div[aria-selected="true"] {
+span[data-baseweb="tag"] {
     background-color: #A5D6A7 !important;  /* active tab green */
     color: black !important;
-    border: 1px solid #C6EAC6 !important;
+    border-radius: 4px !important;
+    padding: 4px 8px !important;
 }
 
 /* Title background */
