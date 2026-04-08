@@ -456,6 +456,12 @@ with tab2:
 with tab3:
     st.header("Historical Results Log")
 
+        # FORCE REFRESH FROM FILE (ignores cache)
+    if os.path.exists(csv_path):
+        current_file_history = pd.read_csv(csv_path).to_dict("records")
+        if "history" in st.session_state and len(st.session_state.history) != len(current_file_history):
+            st.session_state.history = current_file_history
+
     if len(st.session_state.history) > 0:
         df = pd.DataFrame(st.session_state.history)
 
@@ -471,6 +477,7 @@ with tab3:
             empty_df = pd.DataFrame(columns=["Time", "Glucose", "MealState"])
             empty_df.to_csv(csv_path, index=False)
         
+            st.cache_data.clear() 
             st.success("History cleared successfully.")
             st.rerun()
      
