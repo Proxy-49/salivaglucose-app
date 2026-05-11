@@ -5,11 +5,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from sklearn.linear_model import LinearRegression
 from PIL import Image, ImageOps
+from streamlit_local_storage import LocalStorage
 
+localS = LocalStorage()
 # --------------------------
 # Streamlit UI config
 # --------------------------
@@ -51,6 +54,12 @@ div[role="tablist"] {
     background-color: #C6EAC6 !important;  /* slightly darker green than background */
     border-radius: 5px;
     padding: 5px;
+}
+
+caption, .stCaption, [data-testid="stCaptionContainer"] {
+    color: black !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
 }
 
 /* Tab text color */
@@ -260,26 +269,20 @@ model_S  = LinearRegression().fit(calibration_data[["S_corr"]], y_glucose)
 model_HS = LinearRegression().fit(calibration_data[["H_corr","S_corr"]], y_glucose)
 
 # =====================================
-# HISTORY INITIALIZATION + PERSISTENCE
+# DEVICE-SPECIFIC HISTORY
 # =====================================
-csv_path = "history.csv"
-
-# Load history safely
 if "history" not in st.session_state:
-    if os.path.exists(csv_path):
-        try:
-            df_loaded = pd.read_csv(csv_path)
-
-            if df_loaded.empty:
-                st.session_state.history = []
-            else:
-                st.session_state.history = df_loaded.to_dict("records")
-
-        except Exception:
-            st.session_state.history = []
-    else:
+    saved_history = localS.getItem("glucose_history")
+    
+    if saved_history is None or saved_history in [None, "null", "undefined", ""]:
         st.session_state.history = []
-
+    else:
+        try:
+            # Parse the JSON string back to list
+            parsed_history = json.loads(saved_history)
+            st.session_state.history = parsed_history if isinstance(parsed_history, list) else []
+        except (json.JSONDecodeError, TypeError):
+            st.session_state.history = []
 # Track last processed upload
 if "last_processed_file" not in st.session_state:
     st.session_state.last_processed_file = None
@@ -338,7 +341,7 @@ with tab2:
 
     meal_state = st.selectbox(
         "Measurement condition",
-        ["Fasting", "Post-breakfast", "Post-lunch", "Post-dinner"]
+        ["Fasting", "Pre-breakfast", "Post-breakfast","Pre-lunch", "Post-lunch", "Pre-dinner", "Post-dinner"]
     )
 
     uploaded_file = st.file_uploader(
@@ -377,8 +380,8 @@ with tab2:
                 g_HS = max(model_HS.predict(df_HS)[0], 0)
 
                 # Matrix correction
-                SALIVA_MATRIX_FACTOR = 2.0
-                glucose_raw = 0.2 * g_H + 0.3 * g_S + 0.5 * g_HS
+                SALIVA_MATRIX_FACTOR = 3.0
+                glucose_raw = 0.1 * g_H + 0.15 * g_S + 0.75 * g_HS
                 glucose_weighted = (
                     glucose_raw * SALIVA_MATRIX_FACTOR
                 )
@@ -505,15 +508,15 @@ with tab2:
                         new_entry
                     )
 
-                    pd.DataFrame(
-                        st.session_state.history
-                    ).to_csv(csv_path, index=False)
-
+                    localS.setItem(
+                        "glucose_history",
+                        json.dumps(st.session_state.history)
+                    )
+                    
                     # mark upload as processed
                     st.session_state.last_processed_file = (
                         file_id
                     )
-
 
                     # Trend analysis
                     if len(
@@ -557,9 +560,9 @@ with tab2:
 
             except Exception as e:
                 st.error(
-                    "No bubbles detected in image, "
-                    f"please upload another image. ({e})"
+                    f"No bubbles detected in image, please upload another image. ({e})"
                 )
+            
             finally:
                 if os.path.exists(raw_path):
                     os.remove(raw_path)
@@ -567,6 +570,9 @@ with tab2:
                 if os.path.exists(std_path):
                     os.remove(std_path)
 
+        else:  
+            st.warning("⚠️ Same image detected")
+            st.info("Upload a **different image** for new analysis")
 # ==========================================
 #  HISTORY TAB
 # ==========================================
@@ -578,12 +584,7 @@ with tab3:
     # -----------------------------
     if st.button("🗑 Clear History"):
         st.session_state.history = []
-
-        empty_df = pd.DataFrame(
-            columns=["Time", "Glucose", "MealState"]
-        )
-        empty_df.to_csv(csv_path, index=False)
-
+        localS.setItem("glucose_history", json.dumps([]))
         st.rerun()
 
     # -----------------------------
@@ -798,3 +799,4 @@ with tab6:
     for myth, fact in myths.items():
         with st.expander(myth):
             st.write(f"**FACT:** {fact}")
+            
