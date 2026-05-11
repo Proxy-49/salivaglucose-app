@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 from sklearn.linear_model import LinearRegression
 from PIL import Image, ImageOps
 from streamlit_local_storage import LocalStorage
+from matplotlib.colors import rgb_to_hsv
+
 
 localS = LocalStorage()
 # --------------------------
@@ -101,37 +103,6 @@ def standardize_image(input_path, output_path):
     img.save(output_path, format="JPEG", quality=95)
     return output_path
 
-# =====================================
-# RGB TO HSV
-# =====================================
-def rgb_to_hsv(rgb):
-    rgb = np.array(rgb)
-    maxc = rgb.max(axis=1)
-    minc = rgb.min(axis=1)
-
-    v = maxc
-    s = (maxc - minc) / (maxc + 1e-6)
-    s[maxc == 0] = 0
-
-    rc = (maxc - rgb[:,0]) / (maxc - minc + 1e-6)
-    gc = (maxc - rgb[:,1]) / (maxc - minc + 1e-6)
-    bc = (maxc - rgb[:,2]) / (maxc - minc + 1e-6)
-
-    h = np.zeros_like(maxc)
-
-    mask = maxc == rgb[:,0]
-    h[mask] = (bc - gc)[mask]
-
-    mask = maxc == rgb[:,1]
-    h[mask] = 2.0 + (rc - bc)[mask]
-
-    mask = maxc == rgb[:,2]
-    h[mask] = 4.0 + (gc - rc)[mask]
-
-    h = (h / 6.0) % 1.0
-    h[minc == maxc] = 0.0
-
-    return np.stack([h, s, v], axis=1)
 
 # =====================================
 # BUBBLE FEATURE EXTRACTION 
